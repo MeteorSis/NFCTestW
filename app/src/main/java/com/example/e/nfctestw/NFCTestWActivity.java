@@ -11,7 +11,9 @@ import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.Ndef;
 import android.nfc.tech.NdefFormatable;
+import android.os.Build;
 import android.os.Parcelable;
+import android.provider.Settings;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -30,6 +32,27 @@ public class NFCTestWActivity extends AppCompatActivity {
     private boolean mWriteMode = false;
     NfcAdapter mNfcAdapter;
     EditText mNote;
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if(mNfcAdapter.isEnabled() != true) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage("설정에서 NFC를 켜주세요.")
+                    .setPositiveButton("확인",
+                            new DialogInterface.OnClickListener() {
+                                public void onClick(DialogInterface dialog, int whichButton) {
+                                    //API 17 부터 NFC 설정 환경이 변경됨
+                                    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.JELLY_BEAN)
+                                        startActivity(new Intent(Settings.ACTION_NFC_SETTINGS));
+                                    else
+                                        startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+                                }
+                            })
+                    .setCancelable(false)
+                    .show();
+        }
+    }
 
     PendingIntent mNfcPendingIntent;
     IntentFilter[] mWriteTagFilters;
@@ -79,7 +102,8 @@ public class NFCTestWActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         mResumed = false;
-        mNfcAdapter.disableForegroundNdefPush(this);
+        //mNfcAdapter.disableForegroundNdefPush(this); deprecated
+        mNfcAdapter.disableForegroundDispatch(this);
     }
 
     @Override
@@ -112,7 +136,7 @@ public class NFCTestWActivity extends AppCompatActivity {
         @Override
         public void afterTextChanged(Editable arg0) {
             if (mResumed) {
-                mNfcAdapter.enableForegroundNdefPush(NFCTestWActivity.this, getNoteAsNdef());
+                mNfcAdapter.enableForegroundDispatch(NFCTestWActivity.this, mNfcPendingIntent, mNdefExchangeFilters, null);
             }
         }
     };
@@ -124,27 +148,27 @@ public class NFCTestWActivity extends AppCompatActivity {
             disableNdefExchangeMode();
             enableTagWriteMode();
 
-            new AlertDialog.Builder(NFCTestWActivity.this).setTitle("Touch tag to write")
+            new AlertDialog.Builder(NFCTestWActivity.this).setMessage("태그를 접촉시켜 주세요.")
                     .setOnCancelListener(new DialogInterface.OnCancelListener() {
                         @Override
                         public void onCancel(DialogInterface dialog) {
                             disableTagWriteMode();
                             enableNdefExchangeMode();
                         }
-                    }).create().show();
+                    }).show();
         }
     };
 
     private void promptForContent(final NdefMessage msg) {
-        new AlertDialog.Builder(this).setTitle("Replace current content?")
-                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+        new AlertDialog.Builder(this).setTitle("태그를 읽어오시겠습니까?")
+                .setPositiveButton("확인", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface arg0, int arg1) {
                         String body = new String(msg.getRecords()[0].getPayload());
                         setNoteBody(body);
                     }
                 })
-                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                .setNegativeButton("취소", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface arg0, int arg1) {
 
@@ -198,12 +222,12 @@ public class NFCTestWActivity extends AppCompatActivity {
     }
 
     private void enableNdefExchangeMode() {
-        mNfcAdapter.enableForegroundNdefPush(NFCTestWActivity.this, getNoteAsNdef());
+        //mNfcAdapter.enableForegroundNdefPush(NFCTestWActivity.this, getNoteAsNdef()); deprecated
         mNfcAdapter.enableForegroundDispatch(this, mNfcPendingIntent, mNdefExchangeFilters, null);
     }
 
     private void disableNdefExchangeMode() {
-        mNfcAdapter.disableForegroundNdefPush(this);
+        //mNfcAdapter.disableForegroundNdefPush(this); deprecated
         mNfcAdapter.disableForegroundDispatch(this);
     }
 
@@ -240,7 +264,7 @@ public class NFCTestWActivity extends AppCompatActivity {
                 }
 
                 ndef.writeNdefMessage(message);
-                toast("Wrote message to pre-formatted tag.");
+                toast("해당 텍스트를 태그에 write 했습니다.");
                 return true;
             } else {
                 NdefFormatable format = NdefFormatable.get(tag);
