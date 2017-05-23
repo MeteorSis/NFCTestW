@@ -23,6 +23,9 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import java.io.IOException;
 
 public class NFCTestWActivity extends AppCompatActivity {
@@ -32,6 +35,54 @@ public class NFCTestWActivity extends AppCompatActivity {
     private boolean mWriteMode = false;
     NfcAdapter mNfcAdapter;
     EditText mNote;
+
+    PendingIntent mNfcPendingIntent;
+    IntentFilter[] mWriteTagFilters;
+    IntentFilter[] mNdefExchangeFilters;
+
+    String body = null;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+        setContentView(R.layout.activity_nfctest_w);
+
+        //JSON Test
+        JSONObject seatObj = new JSONObject();
+        try {
+            seatObj.put("seat_id", 101);
+            seatObj.put("zone", "1루 외야그린석");
+            seatObj.put("row", 1);
+            seatObj.put("seat_no", 7000);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        body = seatObj.toString();
+
+        JSONArray seatArray = new JSONArray();
+        seatArray.put(seatObj);
+
+        findViewById(R.id.write_tag).setOnClickListener(mTagWriter);
+        mNote = ((EditText) findViewById(R.id.note));
+        mNote.addTextChangedListener(mTextWatcher);
+
+        // Handle all of our received NFC intents in this activity.
+        mNfcPendingIntent = PendingIntent.getActivity(this, 0,
+                new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
+
+        // Intent filters for reading a note from a tag or exchanging over p2p.
+        IntentFilter ndefDetected = new IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED);
+        try {
+            ndefDetected.addDataType("text/plain");
+        } catch (IntentFilter.MalformedMimeTypeException e) { }
+        mNdefExchangeFilters = new IntentFilter[] { ndefDetected };
+
+        // Intent filters for writing to a tag
+        IntentFilter tagDetected = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
+        mWriteTagFilters = new IntentFilter[] { tagDetected };
+    }
 
     @Override
     protected void onStart() {
@@ -52,36 +103,6 @@ public class NFCTestWActivity extends AppCompatActivity {
                     .setCancelable(false)
                     .show();
         }
-    }
-
-    PendingIntent mNfcPendingIntent;
-    IntentFilter[] mWriteTagFilters;
-    IntentFilter[] mNdefExchangeFilters;
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
-
-        setContentView(R.layout.activity_nfctest_w);
-        findViewById(R.id.write_tag).setOnClickListener(mTagWriter);
-        mNote = ((EditText) findViewById(R.id.note));
-        mNote.addTextChangedListener(mTextWatcher);
-
-        // Handle all of our received NFC intents in this activity.
-        mNfcPendingIntent = PendingIntent.getActivity(this, 0,
-                new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
-
-        // Intent filters for reading a note from a tag or exchanging over p2p.
-        IntentFilter ndefDetected = new IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED);
-        try {
-            ndefDetected.addDataType("text/plain");
-        } catch (IntentFilter.MalformedMimeTypeException e) { }
-        mNdefExchangeFilters = new IntentFilter[] { ndefDetected };
-
-        // Intent filters for writing to a tag
-        IntentFilter tagDetected = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
-        mWriteTagFilters = new IntentFilter[] { tagDetected };
     }
 
     @Override
@@ -117,6 +138,7 @@ public class NFCTestWActivity extends AppCompatActivity {
         // Tag writing mode
         if (mWriteMode && NfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction())) {
             Tag detectedTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+            //writeTag(getNoteAsNdef(), detectedTag); orginal
             writeTag(getNoteAsNdef(), detectedTag);
         }
     }
@@ -183,7 +205,8 @@ public class NFCTestWActivity extends AppCompatActivity {
     }
 
     private NdefMessage getNoteAsNdef() {
-        byte[] textBytes = mNote.getText().toString().getBytes();
+        //byte[] textBytes = mNote.getText().toString().getBytes(); original
+        byte[] textBytes = body.getBytes();
         NdefRecord textRecord = new NdefRecord(NdefRecord.TNF_MIME_MEDIA, "text/plain".getBytes(),
                 new byte[] {}, textBytes);
         return new NdefMessage(new NdefRecord[] {
