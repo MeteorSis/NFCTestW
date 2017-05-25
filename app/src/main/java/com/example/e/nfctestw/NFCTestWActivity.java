@@ -52,10 +52,10 @@ public class NFCTestWActivity extends AppCompatActivity {
         //JSON 테스트
         JSONObject seatObj = new JSONObject();
         try {
-            seatObj.put("seat_id", 251);
+            seatObj.put("seat_id", 252);
             seatObj.put("zone", "3루 외야그린석");
             seatObj.put("row", 1);
-            seatObj.put("seat_no", 1);
+            seatObj.put("seat_no", 2);
             seatObj.put("seat_price", 7000);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -78,7 +78,7 @@ public class NFCTestWActivity extends AppCompatActivity {
         } catch (IntentFilter.MalformedMimeTypeException e) { }
         mNdefExchangeFilters = new IntentFilter[] { ndefDetected };
 
-        // Intent filters for writing to a tag
+        //태그에 기록할 때 필요한 인텐트 필터
         IntentFilter tagDetected = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
         mWriteTagFilters = new IntentFilter[] { tagDetected };
     }
@@ -112,6 +112,7 @@ public class NFCTestWActivity extends AppCompatActivity {
         if (NfcAdapter.ACTION_NDEF_DISCOVERED.equals(getIntent().getAction())) {//이 인텐트가 시작된 것이 NFC 인텐트 때문이라면
             NdefMessage[] messages = getNdefMessages(getIntent());//인텐트에서 텍스트를 꺼내서
             byte[] payload = messages[0].getRecords()[0].getPayload();
+            Log.d("test1", new String(payload));
             setNoteBody(new String(payload));//화면에 표시한다.
             setIntent(new Intent());//이 인텐트를 삭제한다.
         }
@@ -185,7 +186,21 @@ public class NFCTestWActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface arg0, int arg1) {
                         String body = new String(msg.getRecords()[0].getPayload());
-                        setNoteBody(body);
+
+                        JSONObject objBody = null;
+                        try {
+                            objBody = new JSONObject(body);
+                        } catch (JSONException e) {
+
+                        }
+                        try {
+                            setNoteBody("고객님의 좌석\n구역: " + objBody.getString("zone") + "\n열: " + objBody.getString("row") + "\n좌석 번호: " + objBody.getString("seat_no"));
+                        } catch (JSONException e) {
+
+                        }
+                        //setNoteBody(body); 원본
+                        Log.d("test2", body);
+                        toast("새로운 좌석이 등록되었습니다.");
                     }
                 })
                 .setNegativeButton("취소", new DialogInterface.OnClickListener() {
@@ -202,7 +217,7 @@ public class NFCTestWActivity extends AppCompatActivity {
         text.append(body);
     }
 
-    private NdefMessage getNoteAsNdef() {//NDEF 메시지로 변환한다.
+    private NdefMessage getNoteAsNdef() {//body를 NDEF 메시지로 변환한다.
         //byte[] textBytes = mNote.getText().toString().getBytes(); 원본
         byte[] textBytes = body.getBytes();
         NdefRecord textRecord = new NdefRecord(NdefRecord.TNF_MIME_MEDIA, "text/plain".getBytes(),
@@ -216,13 +231,13 @@ public class NFCTestWActivity extends AppCompatActivity {
         //인텐트를 파싱한다.
         NdefMessage[] msgs = null;
         String action = intent.getAction();
-        if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action)
-                || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
+        if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(action) || NfcAdapter.ACTION_NDEF_DISCOVERED.equals(action)) {
             Parcelable[] rawMsgs = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES);
             if (rawMsgs != null) {
                 msgs = new NdefMessage[rawMsgs.length];
                 for (int i = 0; i < rawMsgs.length; i++) {
                     msgs[i] = (NdefMessage) rawMsgs[i];
+                    Log.d("test3", msgs[i].toString());
                 }
             } else {
                 //알 수 없는 태그 타입
