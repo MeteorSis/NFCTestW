@@ -52,10 +52,10 @@ public class NFCTestWActivity extends AppCompatActivity {
         //JSON 테스트
         JSONObject seatObj = new JSONObject();
         try {
-            seatObj.put("seat_id", 252);
-            seatObj.put("zone", "3루 외야그린석");
-            seatObj.put("row", 1);
-            seatObj.put("seat_no", 2);
+            seatObj.put("seat_id", 125);
+            seatObj.put("zone", "1루 외야그린석");
+            seatObj.put("row", 3);
+            seatObj.put("seat_no", 25);
             seatObj.put("seat_price", 7000);
         } catch (JSONException e) {
             e.printStackTrace();
